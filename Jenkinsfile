@@ -19,6 +19,7 @@ pipeline {
 
         /* —— Docker Hub 凭据 ID —— */
         REGISTRY_CREDENTIALS = 'dockerhub_credentials'//同lab的示例
+        PATH = "/usr/local/bin:${env.PATH}"
     }
 
     stages {
