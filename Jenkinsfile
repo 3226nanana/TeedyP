@@ -32,12 +32,6 @@ pipeline {
             }
         }
 
-        /* 2️⃣ Maven 打包（跳过测试） */
-        stage('Build (Maven)') {
-            steps {
-                sh 'mvn -B -DskipTests clean package'
-            }
-        }
 
         /* 3️⃣ 构建镜像 */
         stage('Build Docker image') {
