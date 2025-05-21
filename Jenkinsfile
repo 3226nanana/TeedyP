@@ -39,52 +39,52 @@ pipeline {
             }
         }
 
-        /* 3️⃣ 构建镜像 */
-        stage('Build Docker image') {
-            steps {
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-            }
-        }
+//         /* 3️⃣ 构建镜像 */
+//         stage('Build Docker image') {
+//             steps {
+//                 sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+//             }
+//         }
 
-        /* 4️⃣ 登录并推送到 Docker Hub */
-        stage('Push to Docker Hub') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: env.REGISTRY_CREDENTIALS,
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS')]) {
+//         /* 4️⃣ 登录并推送到 Docker Hub */
+//         stage('Push to Docker Hub') {
+//             steps {
+//                 withCredentials([usernamePassword(
+//                     credentialsId: env.REGISTRY_CREDENTIALS,
+//                     usernameVariable: 'DOCKER_USER',
+//                     passwordVariable: 'DOCKER_PASS')]) {
 
-                    sh """
-                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
-                        docker push ${IMAGE_NAME}:latest
-                    """
-                }
-            }
-        }
+//                     sh """
+//                         echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+//                         docker push ${IMAGE_NAME}:${IMAGE_TAG}
+//                         docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+//                         docker push ${IMAGE_NAME}:latest
+//                     """
+//                 }
+//             }
+//         }
 
-        /* 5️⃣ 本机同时跑 3 个副本：8082 / 8083 / 8084 */
-        stage('Run 3 containers') {
-            steps {
-                sh """
-                    for port in 8082 8083 8081; do
-                      docker rm -f teedy-$port || true
-                      docker run -d --name teedy-$port -p $port:8080 ${IMAGE_NAME}:${IMAGE_TAG}
-                    done
-                    docker ps --filter "name=teedy-"
-                """
-            }
-        }
-        //第13周
-        stage('Deploy to K8s') {
-    steps {
-        sh """
-            kubectl set image deployment/teedy-deploy teedy-app=${IMAGE_NAME}:${IMAGE_TAG} --record
-            kubectl rollout status deployment/teedy-deploy
-        """
-    }
-}
+//         /* 5️⃣ 本机同时跑 3 个副本：8082 / 8083 / 8084 */
+//         stage('Run 3 containers') {
+//             steps {
+//                 sh """
+//                     for port in 8082 8083 8081; do
+//                       docker rm -f teedy-$port || true
+//                       docker run -d --name teedy-$port -p $port:8080 ${IMAGE_NAME}:${IMAGE_TAG}
+//                     done
+//                     docker ps --filter "name=teedy-"
+//                 """
+//             }
+//         }
+//         //第13周
+//         stage('Deploy to K8s') {
+//     steps {
+//         sh """
+//             kubectl set image deployment/teedy-deploy teedy-app=${IMAGE_NAME}:${IMAGE_TAG} --record
+//             kubectl rollout status deployment/teedy-deploy
+//         """
+//     }
+// }
     }
 
     /* 6️⃣ 无论成功失败都打印最近镜像列表，方便调试 */
