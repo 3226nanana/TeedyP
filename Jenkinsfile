@@ -8,7 +8,8 @@ pipeline {
         stage('Clean') {
             steps {
                 sh 'mvn clean install -pl docs-web-common -DskipTests'
-                sh 'mvn install -DskipTests'
+                sh 'mvn install -pl docs-core -DskipTests'
+                sh 'mvn install -pl docs-web -DskipTests'
             }
         }
 
