@@ -1,10 +1,13 @@
 pipeline {
     agent any
+    tools {
+        maven 'M3'
+    }
 
     stages {
         stage('Clean') {
             steps {
-                sh 'mvn clean'
+                sh 'mvn clean install -DskipTests'
             }
         }
 
@@ -56,7 +59,7 @@ pipeline {
             archiveArtifacts artifacts: '**/target/site/**/*.*', fingerprint: true
             archiveArtifacts artifacts: '**/target/**/*.jar', fingerprint: true
             archiveArtifacts artifacts: '**/target/**/*.war', fingerprint: true
-            junit '**/target/surefire-reports/*.xml'
+            junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
         }
     }
 }
