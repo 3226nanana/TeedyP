@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-    maven 'M3'        // 和全局配置里的一致
-  }
-
     stages {
         stage('Clean') {
             steps {
