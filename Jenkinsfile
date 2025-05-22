@@ -34,7 +34,12 @@ pipeline {
         /* 2️⃣ Maven 打包（跳过测试） */
         stage('Build (Maven)') {
             steps {
-                sh 'mvn -B -DskipTests clean package'
+                // 先独立安装 docs-web-common，避免 docs-core 依赖解析失败，
+                // 再编译整个多模块项目
+                sh '''
+                  mvn -B -DskipTests -pl docs-web-common clean install
+                  mvn -B -DskipTests clean package
+                '''
             }
         }
 
@@ -91,8 +96,12 @@ pipeline {
     post {
         always {
             sh '''
-              echo "===== Latest images ====="
-              docker images --format "{{.Repository}}:{{.Tag}}  {{.CreatedSince}}" | grep "^${IMAGE_NAME}"
+              if command -v docker >/dev/null 2>&1; then
+                echo "===== Latest images ====="
+                docker images --format "{{.Repository}}:{{.Tag}}  {{.CreatedSince}}" | grep "^${IMAGE_NAME}" || true
+              else
+                echo "⚠️  docker command not found; skipping image list."
+              fi
             '''
         }
     }
