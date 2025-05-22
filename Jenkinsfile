@@ -33,6 +33,13 @@ pipeline {
         }
 
 
+        /* 2️⃣ 预拉取基础镜像，避免网络超时 */
+        stage('Pre-pull Base Image') {
+            steps {
+                sh 'docker pull ubuntu:22.04 || true'
+            }
+        }
+
         /* 3️⃣ 构建镜像 */
         stage('Build Docker image') {
             steps {
