@@ -10,7 +10,7 @@ pipeline {
 
     environment {
         /* —— 代码仓库 —— */
-        REPO_URL = 'https://github.com/aplacalike/Teedy12010908.git'//改成你自己的
+        REPO_URL = 'https://github.com/3226nanana/TeedyP.git'//改成你自己的
         BRANCH   = 'master'
 
         /* —— Docker 镜像 —— */
@@ -34,14 +34,14 @@ pipeline {
         /* 2️⃣ Maven 打包（跳过测试） */
         stage('Build (Maven)') {
             steps {
-                bat 'mvn -B -DskipTests clean package'
+                sh 'mvn -B -DskipTests clean package'
             }
         }
 
         /* 3️⃣ 构建镜像 */
         stage('Build Docker image') {
             steps {
-                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
+                sh "docker build -t \${IMAGE_NAME}:\${IMAGE_TAG} ."
             }
         }
 
@@ -53,12 +53,12 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS')]) {
 
-                    bat """
-                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
-                        docker push %IMAGE_NAME%:%IMAGE_TAG%
-                        docker tag  %IMAGE_NAME%:%IMAGE_TAG% %IMAGE_NAME%:latest
-                        docker push %IMAGE_NAME%:latest
-                    """
+                    sh '''
+                      echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                      docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                      docker tag  ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                      docker push ${IMAGE_NAME}:latest
+                    '''
                 }
             }
         }
@@ -66,34 +66,33 @@ pipeline {
         /* 5️⃣ 本机同时跑 3 个副本：8082 / 8083 / 8084 */
         stage('Run 3 containers') {
             steps {
-                bat """
-                    for %%P in (8082 8083 8081) do (
-                        docker rm -f teedy-%%P || rem no old container
-                        docker run -d --name teedy-%%P -p %%P:8080 %IMAGE_NAME%:%IMAGE_TAG%
-                    )
-                    docker ps --filter "name=teedy-"
-                """
+                sh '''
+                  for PORT in 8082 8083 8081; do
+                    docker rm -f teedy-$PORT || true
+                    docker run -d --name teedy-$PORT -p $PORT:8080 ${IMAGE_NAME}:${IMAGE_TAG}
+                  done
+                  docker ps --filter "name=teedy-"
+                '''
             }
         }
         //第13周
         stage('Deploy to K8s') {
-    steps {
-        bat """
-            kubectl set image deployment/teedy-deploy ^
-              teedy-app=%IMAGE_NAME%:%IMAGE_TAG% --record
-            kubectl rollout status deployment/teedy-deploy
-        """
-    }
-}
+            steps {
+                sh """
+                  kubectl set image deployment/teedy-deploy \\
+                    teedy-app=\${IMAGE_NAME}:\${IMAGE_TAG} --record
+                  kubectl rollout status deployment/teedy-deploy
+                """
+            }
+        }
     }
 
     /* 6️⃣ 无论成功失败都打印最近镜像列表，方便调试 */
     post {
         always {
-            bat '''
-                echo ===== Latest images =====
-                docker images --format "{{.Repository}}:{{.Tag}}  {{.CreatedSince}}" ^
-                | findstr /B "%IMAGE_NAME%"
+            sh '''
+              echo "===== Latest images ====="
+              docker images --format "{{.Repository}}:{{.Tag}}  {{.CreatedSince}}" | grep "^${IMAGE_NAME}"
             '''
         }
     }
