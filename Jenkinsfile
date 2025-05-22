@@ -1,101 +1,43 @@
-pipeline {
-    agent any
-
-    /* 若已在 Manage Jenkins → Global Tool Configuration
-       添加名为 “M3” 的 Maven（自动安装或指定本地路径），就保留这行；
-       否则删掉 tools{} 并把下方 bat 'mvn …' 换成完整路径 */
-    tools {
-        maven 'M3'                       // Maven 3.x
-    }
-
-    environment {
-        /* —— 代码仓库 —— */
-        REPO_URL = 'https://github.com/3226nanana/TeedyP.git'//改成你自己的
-        BRANCH   = 'master'
-
-        /* —— Docker 镜像 —— */
-        IMAGE_NAME = 'lk9050/teedy-app'//改成你自己的
-        IMAGE_TAG  = "${env.BUILD_NUMBER}"
-
-        /* —— Docker Hub 凭据 ID —— */
-        REGISTRY_CREDENTIALS = 'dockerhub_credentials'//同lab的示例
-        PATH = "/usr/local/bin:${env.PATH}"
-    }
-
-    stages {
-
-        /*1️⃣ 拉取代码 */
-        stage('Checkout') {
+        stage('Package WAR') {
             steps {
-                git branch: "${env.BRANCH}",
-                    url:    "${env.REPO_URL}"
+                // 仅打包 docs-web 模块生成 docs-web-*.war，放到工作区供后续 Docker 构建使用
+                sh 'mvn -B -DskipTests clean package -pl docs-web'
             }
         }
-
-
-        /* 2️⃣ 预拉取基础镜像，避免网络超时 */
-        stage('Pre-pull Base Image') {
-            steps {
-                sh 'docker pull ubuntu:22.04 || true'
-            }
-        }
-
-        /* 3️⃣ 构建镜像 */
-        stage('Build Docker image') {
-            steps {
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-            }
-        }
-
-        /* 4️⃣ 登录并推送到 Docker Hub */
-        stage('Push to Docker Hub') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: env.REGISTRY_CREDENTIALS,
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS')]) {
-
-                    sh """
-                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
-                        docker push ${IMAGE_NAME}:latest
-                    """
-                }
-            }
-        }
-
-        /* 5️⃣ 本机同时跑 3 个副本：8082 / 8083 / 8084 */
-        stage('Run 3 containers') {
-            steps {
-                sh """
-                    for port in 8082 8083 8081; do
-                      docker rm -f teedy-$port || true
-                      docker run -d --name teedy-$port -p $port:8080 ${IMAGE_NAME}:${IMAGE_TAG}
-                    done
-                    docker ps --filter "name=teedy-"
-                """
-            }
-        }
-        //第13周
-        stage('Deploy to K8s') {
-    steps {
-        sh """
-            kubectl set image deployment/teedy-deploy teedy-app=${IMAGE_NAME}:${IMAGE_TAG} --record
-            kubectl rollout status deployment/teedy-deploy
-        """
-    }
-}
-    }
-
-    /* 6️⃣ 无论成功失败都打印最近镜像列表，方便调试 */
-    post {
-        always {
-            sh script: '''
-                echo ===== Latest images =====
-                docker images --format "{{.Repository}}:{{.Tag}}  {{.CreatedSince}}" \
-                | grep "^${IMAGE_NAME}" || true
-            ''', returnStatus: true
-        }
-    }
-}
+RUN sed -i 's|ports.ubuntu.com|archive.ubuntu.com|g' /etc/apt/sources.list && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get -o Acquire::Retries=3 -y --no-install-recommends install \
+        vim less procps unzip wget tzdata openjdk-11-jdk \
+        ffmpeg \
+        mediainfo \
+        tesseract-ocr \
+        tesseract-ocr-ara \
+        tesseract-ocr-ces \
+        tesseract-ocr-chi-sim \
+        tesseract-ocr-chi-tra \
+        tesseract-ocr-dan \
+        tesseract-ocr-deu \
+        tesseract-ocr-fin \
+        tesseract-ocr-fra \
+        tesseract-ocr-heb \
+        tesseract-ocr-hin \
+        tesseract-ocr-hun \
+        tesseract-ocr-ita \
+        tesseract-ocr-jpn \
+        tesseract-ocr-kor \
+        tesseract-ocr-lav \
+        tesseract-ocr-nld \
+        tesseract-ocr-nor \
+        tesseract-ocr-pol \
+        tesseract-ocr-por \
+        tesseract-ocr-rus \
+        tesseract-ocr-spa \
+        tesseract-ocr-swe \
+        tesseract-ocr-tha \
+        tesseract-ocr-tur \
+        tesseract-ocr-ukr \
+        tesseract-ocr-vie \
+        tesseract-ocr-sqi && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
