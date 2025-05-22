@@ -38,7 +38,7 @@ pipeline {
                 // 再编译整个多模块项目
                 sh '''
                   mvn -B -DskipTests -pl docs-web-common clean install
-                  mvn -B -DskipTests clean package
+                  mvn -B -DskipTests -nsu clean package
                 '''
             }
         }
